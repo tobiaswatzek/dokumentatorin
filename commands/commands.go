@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -30,7 +31,12 @@ func Execute(args []string) error {
 		return err
 	}
 
-	fmt.Printf("%v\n", filePaths)
+	parsedFiles, err := parseDataFiles(filePaths, appFs)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%v\n", parsedFiles)
 
 	return nil
 }
@@ -75,6 +81,28 @@ func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.F
 	}
 
 	return files, nil
+}
+
+type parsedDataFile struct {
+	FileName string
+	Data     interface{}
+}
+
+func parseDataFiles(paths []string, appFs afero.Fs) ([]parsedDataFile, error) {
+	parsedFiles := make([]parsedDataFile, len(paths))
+
+	for i, path := range paths {
+		fileName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+
+		data, err := parseDataFile(path, appFs)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedFiles[i] = parsedDataFile{FileName: fileName, Data: data}
+	}
+
+	return parsedFiles, nil
 }
 
 func parseDataFile(path string, appFs afero.Fs) (interface{}, error) {

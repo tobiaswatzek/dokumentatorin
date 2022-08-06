@@ -4,12 +4,14 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"watzek.dev/apps/dokumentatorin/util"
 )
 
 func Test_parseArguments(t *testing.T) {
@@ -99,6 +101,54 @@ func Test_parseDataFile(t *testing.T) {
 		"baz": "bam",
 	}
 	assert.Equal(expectedData, actualData)
+}
+
+func Test_parseDataFiles(t *testing.T) {
+	assert := assert.New(t)
+	memoryFs := afero.NewMemMapFs()
+
+	expectedFiles := []struct {
+		parsed  parsedDataFile
+		content string
+	}{
+		{parsed: parsedDataFile{
+			FileName: "foo",
+			Data: map[string]interface{}{
+				"bar": 1,
+				"baz": "bam",
+			}},
+			content: "bar: 1\nbaz: bam\n",
+		},
+		{
+			parsed: parsedDataFile{
+				FileName: "banana",
+				Data: map[string]interface{}{
+					"bar": 42,
+					"baz": "yeah man",
+				}},
+			content: "bar: 42\nbaz: yeah man\n",
+		},
+	}
+
+	filePaths := make([]string, len(expectedFiles))
+
+	for i, f := range expectedFiles {
+		path := filepath.Join("/data", f.parsed.FileName+".yaml")
+		err := afero.WriteFile(memoryFs, path, []byte(f.content), fs.FileMode(os.O_TRUNC))
+		require.Nil(t, err)
+		filePaths[i] = path
+	}
+
+	actualParsedData, err := parseDataFiles(filePaths, memoryFs)
+
+	assert.Nil(err)
+	expectedParsedData := util.Map(expectedFiles, func(d struct {
+		parsed  parsedDataFile
+		content string
+	}) parsedDataFile {
+		return d.parsed
+	})
+	assert.ElementsMatch(expectedParsedData, actualParsedData)
 }
 
 func createFiles(filePaths []string, appFs afero.Fs, t *testing.T) {
