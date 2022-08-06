@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"os"
+
+	"watzek.dev/apps/dokumentatorin/commands"
+)
 
 func main() {
-	fmt.Println("Hello World!")
+	err := commands.Execute(os.Args[1:])
+	if err != nil {
+		panic(err)
+	}
 }
