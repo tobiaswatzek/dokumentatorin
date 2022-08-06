@@ -2,6 +2,7 @@ package commands
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"regexp"
 	"testing"
@@ -81,6 +82,23 @@ func Test_findAllMatchingFilePaths(t *testing.T) {
 
 	assert.Nil(err)
 	assert.ElementsMatch(expectedFilePaths, actualFilePaths)
+}
+
+func Test_parseDataFile(t *testing.T) {
+	assert := assert.New(t)
+	memoryFs := afero.NewMemMapFs()
+	filePath := "/data/foo.yaml"
+	content := "bar: 1\nbaz: bam\n"
+	afero.WriteFile(memoryFs, filePath, []byte(content), fs.FileMode(os.O_TRUNC))
+
+	actualData, err := parseDataFile(filePath, memoryFs)
+
+	assert.Nil(err)
+	expectedData := map[string]interface{}{
+		"bar": 1,
+		"baz": "bam",
+	}
+	assert.Equal(expectedData, actualData)
 }
 
 func createFiles(filePaths []string, appFs afero.Fs, t *testing.T) {

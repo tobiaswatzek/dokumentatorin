@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+	"gopkg.in/yaml.v3"
 )
 
 func Execute(args []string) error {
@@ -74,4 +75,20 @@ func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.F
 	}
 
 	return files, nil
+}
+
+func parseDataFile(path string, appFs afero.Fs) (interface{}, error) {
+	contents, err := afero.ReadFile(appFs, path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data interface{}
+	err = yaml.Unmarshal(contents, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
