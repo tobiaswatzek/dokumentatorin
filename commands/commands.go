@@ -42,7 +42,8 @@ func Execute(args []string) error {
 }
 
 type arguments struct {
-	DataRoot string
+	DataRoot   string
+	SchemaPath string
 }
 
 func parseArguments(rawArgs []string) (arguments, error) {
@@ -55,7 +56,9 @@ func parseArguments(rawArgs []string) (arguments, error) {
 		return arguments{}, errors.New("dataRoot is required")
 	}
 
-	return arguments{DataRoot: dataRoot}, nil
+	schemaPath := strings.TrimSpace(rawArgs[1])
+
+	return arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
 }
 
 func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.Fs) ([]string, error) {

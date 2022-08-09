@@ -23,9 +23,9 @@ func Test_parseArguments(t *testing.T) {
 		expectedErr       error
 	}{
 		{
-			desc:              "parse dataRoot successfully",
-			rawArgs:           []string{"./data"},
-			expectedArguments: arguments{DataRoot: "./data"},
+			desc:              "parse args successfully",
+			rawArgs:           []string{"./data", "./schema.json"},
+			expectedArguments: arguments{DataRoot: "./data", SchemaPath: "./schema.json"},
 			expectedErr:       nil,
 		},
 		{
@@ -45,6 +45,18 @@ func Test_parseArguments(t *testing.T) {
 			rawArgs:           []string{"   "},
 			expectedArguments: arguments{},
 			expectedErr:       errors.New("dataRoot is required"),
+		},
+		{
+			desc:              "no error when schemaPath empty",
+			rawArgs:           []string{"./data", ""},
+			expectedArguments: arguments{DataRoot: "./data", SchemaPath: ""},
+			expectedErr:       nil,
+		},
+		{
+			desc:              "no error when schemaPath whitespace only",
+			rawArgs:           []string{"./data", "   "},
+			expectedArguments: arguments{DataRoot: "./data", SchemaPath: ""},
+			expectedErr:       nil,
 		},
 	}
 	for _, tC := range testCases {
