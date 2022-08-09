@@ -8,12 +8,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 )
 
 func Execute(args []string) error {
-
 	parsedArgs, err := parseArguments(args)
 	if err != nil {
 		return err
@@ -122,4 +122,24 @@ func parseDataFile(path string, appFs afero.Fs) (interface{}, error) {
 	}
 
 	return data, nil
+}
+
+func buildJsonSchema(schemaPath string, appFs afero.Fs) (*jsonschema.Schema, error) {
+	schemaFile, err := appFs.Open(schemaPath)
+	if err != nil {
+		return nil, err
+	}
+
+	compiler := jsonschema.NewCompiler()
+	schemaName := filepath.Base(schemaPath)
+	err = compiler.AddResource(schemaName, schemaFile)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := compiler.Compile(schemaName)
+	if err != nil {
+		return nil, err
+	}
+
+	return schema, nil
 }
