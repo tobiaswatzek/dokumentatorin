@@ -26,6 +26,14 @@ func Execute(args []string) error {
 		return err
 	}
 
+	var schema *jsonschema.Schema
+	if parsedArgs.SchemaPath != "" {
+		schema, err = buildJsonSchema(parsedArgs.SchemaPath, appFs)
+		if err != nil {
+			return err
+		}
+	}
+
 	filePaths, err := findAllMatchingFilePaths(parsedArgs.DataRoot, yamlRegex, appFs)
 	if err != nil {
 		return err
@@ -34,6 +42,13 @@ func Execute(args []string) error {
 	parsedFiles, err := parseDataFiles(filePaths, appFs)
 	if err != nil {
 		return err
+	}
+
+	if schema != nil {
+		err = validateParsedDataFiles(parsedFiles, schema)
+		if err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("%v\n", parsedFiles)
@@ -142,4 +157,15 @@ func buildJsonSchema(schemaPath string, appFs afero.Fs) (*jsonschema.Schema, err
 	}
 
 	return schema, nil
+}
+
+func validateParsedDataFiles(dataFiles []parsedDataFile, schema *jsonschema.Schema) error {
+	for _, dataFile := range dataFiles {
+		err := schema.Validate(dataFile.Data)
+		if err != nil {
+			return fmt.Errorf("error when validating data file with name %s %w", dataFile.FileName, err)
+		}
+	}
+
+	return nil
 }
