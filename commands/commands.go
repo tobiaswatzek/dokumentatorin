@@ -8,12 +8,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 )
 
 func Execute(args []string) error {
-
 	parsedArgs, err := parseArguments(args)
 	if err != nil {
 		return err
@@ -26,6 +26,14 @@ func Execute(args []string) error {
 		return err
 	}
 
+	var schema *jsonschema.Schema
+	if parsedArgs.SchemaPath != "" {
+		schema, err = buildJsonSchema(parsedArgs.SchemaPath, appFs)
+		if err != nil {
+			return err
+		}
+	}
+
 	filePaths, err := findAllMatchingFilePaths(parsedArgs.DataRoot, yamlRegex, appFs)
 	if err != nil {
 		return err
@@ -36,13 +44,21 @@ func Execute(args []string) error {
 		return err
 	}
 
+	if schema != nil {
+		err = validateParsedDataFiles(parsedFiles, schema)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Printf("%v\n", parsedFiles)
 
 	return nil
 }
 
 type arguments struct {
-	DataRoot string
+	DataRoot   string
+	SchemaPath string
 }
 
 func parseArguments(rawArgs []string) (arguments, error) {
@@ -55,7 +71,9 @@ func parseArguments(rawArgs []string) (arguments, error) {
 		return arguments{}, errors.New("dataRoot is required")
 	}
 
-	return arguments{DataRoot: dataRoot}, nil
+	schemaPath := strings.TrimSpace(rawArgs[1])
+
+	return arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
 }
 
 func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.Fs) ([]string, error) {
@@ -119,4 +137,35 @@ func parseDataFile(path string, appFs afero.Fs) (interface{}, error) {
 	}
 
 	return data, nil
+}
+
+func buildJsonSchema(schemaPath string, appFs afero.Fs) (*jsonschema.Schema, error) {
+	schemaFile, err := appFs.Open(schemaPath)
+	if err != nil {
+		return nil, err
+	}
+
+	compiler := jsonschema.NewCompiler()
+	schemaName := filepath.Base(schemaPath)
+	err = compiler.AddResource(schemaName, schemaFile)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := compiler.Compile(schemaName)
+	if err != nil {
+		return nil, err
+	}
+
+	return schema, nil
+}
+
+func validateParsedDataFiles(dataFiles []parsedDataFile, schema *jsonschema.Schema) error {
+	for _, dataFile := range dataFiles {
+		err := schema.Validate(dataFile.Data)
+		if err != nil {
+			return fmt.Errorf("error when validating data file with name %s %w", dataFile.FileName, err)
+		}
+	}
+
+	return nil
 }
