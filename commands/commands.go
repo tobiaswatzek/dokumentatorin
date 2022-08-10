@@ -13,12 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Execute(args []string) error {
-	parsedArgs, err := parseArguments(args)
-	if err != nil {
-		return err
-	}
-
+func Execute(args Arguments) error {
 	appFs := afero.NewOsFs()
 
 	yamlRegex, err := regexp.Compile(`.*\.(ya?ml)`)
@@ -27,14 +22,14 @@ func Execute(args []string) error {
 	}
 
 	var schema *jsonschema.Schema
-	if parsedArgs.SchemaPath != "" {
-		schema, err = buildJsonSchema(parsedArgs.SchemaPath, appFs)
+	if args.SchemaPath != "" {
+		schema, err = buildJsonSchema(args.SchemaPath, appFs)
 		if err != nil {
 			return err
 		}
 	}
 
-	filePaths, err := findAllMatchingFilePaths(parsedArgs.DataRoot, yamlRegex, appFs)
+	filePaths, err := findAllMatchingFilePaths(args.DataRoot, yamlRegex, appFs)
 	if err != nil {
 		return err
 	}
@@ -56,24 +51,20 @@ func Execute(args []string) error {
 	return nil
 }
 
-type arguments struct {
+type Arguments struct {
 	DataRoot   string
 	SchemaPath string
 }
 
-func parseArguments(rawArgs []string) (arguments, error) {
-	if len(rawArgs) == 0 {
-		return arguments{}, errors.New("no arguments given")
-	}
-
-	dataRoot := strings.TrimSpace(rawArgs[0])
+func NewArguments(dataRoot string, schemaPath string) (Arguments, error) {
+	dataRoot = strings.TrimSpace(dataRoot)
 	if dataRoot == "" {
-		return arguments{}, errors.New("dataRoot is required")
+		return Arguments{}, errors.New("dataRoot is required")
 	}
 
-	schemaPath := strings.TrimSpace(rawArgs[1])
+	schemaPath = strings.TrimSpace(schemaPath)
 
-	return arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
+	return Arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
 }
 
 func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.Fs) ([]string, error) {

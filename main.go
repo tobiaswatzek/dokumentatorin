@@ -1,14 +1,28 @@
 package main
 
 import (
-	"os"
+	"flag"
 
 	"watzek.dev/apps/dokumentatorin/commands"
 )
 
 func main() {
-	err := commands.Execute(os.Args[1:])
+	args, err := parseArguments()
 	if err != nil {
 		panic(err)
 	}
+
+	err = commands.Execute(args)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func parseArguments() (commands.Arguments, error) {
+	dataRoot := flag.String("dataRoot", "", "Directory that contains data files.")
+	schemaPath := flag.String("schema", "", "Optional JSON schema used to validate data.")
+
+	flag.Parse()
+
+	return commands.NewArguments(*dataRoot, *schemaPath)
 }
