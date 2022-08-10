@@ -52,11 +52,12 @@ func Execute(args Arguments) error {
 }
 
 type Arguments struct {
-	DataRoot   string
-	SchemaPath string
+	DataRoot       string
+	SchemaPath     string
+	MdTemplatePath string
 }
 
-func NewArguments(dataRoot string, schemaPath string) (Arguments, error) {
+func NewArguments(dataRoot string, schemaPath string, mdTemplatePath string) (Arguments, error) {
 	dataRoot = strings.TrimSpace(dataRoot)
 	if dataRoot == "" {
 		return Arguments{}, errors.New("dataRoot is required")
@@ -64,7 +65,12 @@ func NewArguments(dataRoot string, schemaPath string) (Arguments, error) {
 
 	schemaPath = strings.TrimSpace(schemaPath)
 
-	return Arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
+	mdTemplatePath = strings.TrimSpace(mdTemplatePath)
+	if mdTemplatePath == "" {
+		return Arguments{}, errors.New("mdTemplatePath is required")
+	}
+
+	return Arguments{DataRoot: dataRoot, SchemaPath: schemaPath, MdTemplatePath: mdTemplatePath}, nil
 }
 
 func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.Fs) ([]string, error) {
