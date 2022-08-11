@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -53,7 +52,7 @@ func Execute(args Arguments) error {
 		}
 	}
 
-	err = tmpl.Execute(os.Stdout, templateData{ParsedData: parsedFiles})
+	err = renderTemplateToPath(tmpl, templateData{ParsedData: parsedFiles}, args.OutputPath, appFs)
 	if err != nil {
 		return err
 	}
@@ -199,4 +198,16 @@ func readTemplate(templatePath string, appFs afero.Fs) (*template.Template, erro
 	}
 
 	return tmpl, err
+}
+
+func renderTemplateToPath(tmpl *template.Template, data templateData, path string, appFs afero.Fs) error {
+	file, err := appFs.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	err = tmpl.Execute(file, data)
+
+	return err
 }
