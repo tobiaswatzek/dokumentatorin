@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -30,6 +31,11 @@ func Execute(args Arguments) error {
 		}
 	}
 
+	tmpl, err := readTemplate(args.TemplatePath, appFs)
+	if err != nil {
+		return err
+	}
+
 	filePaths, err := findAllMatchingFilePaths(args.DataRoot, yamlRegex, appFs)
 	if err != nil {
 		return err
@@ -47,9 +53,16 @@ func Execute(args Arguments) error {
 		}
 	}
 
-	fmt.Printf("%v\n", parsedFiles)
+	err = tmpl.Execute(os.Stdout, templateData{ParsedData: parsedFiles})
+	if err != nil {
+		return err
+	}
 
 	return nil
+}
+
+type templateData struct {
+	ParsedData []parsedDataFile
 }
 
 type Arguments struct {
