@@ -104,6 +104,44 @@ func Test_parseDataFiles(t *testing.T) {
 	assert.ElementsMatch(expectedParsedData, actualParsedData)
 }
 
+func Test_readTemplate(t *testing.T) {
+	testCases := []struct {
+		desc            string
+		templateContent string
+		expectErr       bool
+	}{
+		{
+			desc:            "successfully read template",
+			templateContent: "Hello {{ .name }}",
+			expectErr:       false,
+		},
+		{
+			desc:            "fail for non existent file",
+			templateContent: "",
+			expectErr:       true,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			assert := assert.New(t)
+			appFs := afero.NewMemMapFs()
+			path := "/template.txt"
+			if tC.templateContent != "" {
+				afero.WriteFile(appFs, path, []byte(tC.templateContent), fs.FileMode(os.O_TRUNC))
+			}
+
+			tmpl, err := readTemplate(path, appFs)
+
+			if tC.expectErr {
+				assert.NotNil(err)
+			} else {
+				assert.Nil(err)
+				assert.NotNil(tmpl)
+			}
+		})
+	}
+}
+
 func createFiles(filePaths []string, appFs afero.Fs, t *testing.T) {
 	for _, f := range filePaths {
 		_, err := appFs.Create(f)

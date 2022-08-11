@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"path/filepath"
 	"regexp"
@@ -165,4 +166,18 @@ func validateParsedDataFiles(dataFiles []parsedDataFile, schema *jsonschema.Sche
 	}
 
 	return nil
+}
+
+func readTemplate(templatePath string, appFs afero.Fs) (*template.Template, error) {
+	rawTemplate, err := afero.ReadFile(appFs, templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err := template.New("outputTemplate").Parse(string(rawTemplate))
+	if err != nil {
+		return nil, err
+	}
+
+	return tmpl, err
 }
