@@ -3,7 +3,9 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -13,12 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Execute(args []string) error {
-	parsedArgs, err := parseArguments(args)
-	if err != nil {
-		return err
-	}
-
+func Execute(args Arguments) error {
 	appFs := afero.NewOsFs()
 
 	yamlRegex, err := regexp.Compile(`.*\.(ya?ml)`)
@@ -27,14 +24,19 @@ func Execute(args []string) error {
 	}
 
 	var schema *jsonschema.Schema
-	if parsedArgs.SchemaPath != "" {
-		schema, err = buildJsonSchema(parsedArgs.SchemaPath, appFs)
+	if args.SchemaPath != "" {
+		schema, err = buildJsonSchema(args.SchemaPath, appFs)
 		if err != nil {
 			return err
 		}
 	}
 
-	filePaths, err := findAllMatchingFilePaths(parsedArgs.DataRoot, yamlRegex, appFs)
+	tmpl, err := readTemplate(args.TemplatePath, appFs)
+	if err != nil {
+		return err
+	}
+
+	filePaths, err := findAllMatchingFilePaths(args.DataRoot, yamlRegex, appFs)
 	if err != nil {
 		return err
 	}
@@ -51,29 +53,38 @@ func Execute(args []string) error {
 		}
 	}
 
-	fmt.Printf("%v\n", parsedFiles)
+	err = tmpl.Execute(os.Stdout, templateData{ParsedData: parsedFiles})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-type arguments struct {
-	DataRoot   string
-	SchemaPath string
+type templateData struct {
+	ParsedData []parsedDataFile
 }
 
-func parseArguments(rawArgs []string) (arguments, error) {
-	if len(rawArgs) == 0 {
-		return arguments{}, errors.New("no arguments given")
-	}
+type Arguments struct {
+	DataRoot     string
+	SchemaPath   string
+	TemplatePath string
+}
 
-	dataRoot := strings.TrimSpace(rawArgs[0])
+func NewArguments(dataRoot string, schemaPath string, templatePath string) (Arguments, error) {
+	dataRoot = strings.TrimSpace(dataRoot)
 	if dataRoot == "" {
-		return arguments{}, errors.New("dataRoot is required")
+		return Arguments{}, errors.New("dataRoot is required")
 	}
 
-	schemaPath := strings.TrimSpace(rawArgs[1])
+	schemaPath = strings.TrimSpace(schemaPath)
 
-	return arguments{DataRoot: dataRoot, SchemaPath: schemaPath}, nil
+	templatePath = strings.TrimSpace(templatePath)
+	if templatePath == "" {
+		return Arguments{}, errors.New("templatePath is required")
+	}
+
+	return Arguments{DataRoot: dataRoot, SchemaPath: schemaPath, TemplatePath: templatePath}, nil
 }
 
 func findAllMatchingFilePaths(root string, pattern *regexp.Regexp, appFs afero.Fs) ([]string, error) {
@@ -168,4 +179,18 @@ func validateParsedDataFiles(dataFiles []parsedDataFile, schema *jsonschema.Sche
 	}
 
 	return nil
+}
+
+func readTemplate(templatePath string, appFs afero.Fs) (*template.Template, error) {
+	rawTemplate, err := afero.ReadFile(appFs, templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err := template.New("outputTemplate").Parse(string(rawTemplate))
+	if err != nil {
+		return nil, err
+	}
+
+	return tmpl, err
 }
