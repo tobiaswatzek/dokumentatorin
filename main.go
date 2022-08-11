@@ -21,9 +21,9 @@ func main() {
 func parseArguments() (commands.Arguments, error) {
 	dataRoot := flag.String("dataRoot", "", "Directory that contains data files.")
 	schemaPath := flag.String("schema", "", "Optional JSON schema used to validate data.")
-	mdTemplatePath := flag.String("mdTemplate", "", "Template that is used to render markdown.")
+	templatePath := flag.String("template", "", "Template that is used to render data.")
 
 	flag.Parse()
 
-	return commands.NewArguments(*dataRoot, *schemaPath, *mdTemplatePath)
+	return commands.NewArguments(*dataRoot, *schemaPath, *templatePath)
 }
